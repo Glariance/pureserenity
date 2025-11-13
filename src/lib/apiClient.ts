@@ -1,0 +1,30 @@
+import axios from 'axios';
+
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+const normalizedBaseUrl =
+  rawBaseUrl && rawBaseUrl !== ''
+    ? rawBaseUrl.replace(/\/+$/, '')
+    : '';
+
+export const apiClient = axios.create({
+  baseURL: normalizedBaseUrl || '/api',
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+});
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      error.message =
+        error.response.data?.message ??
+        error.message ??
+        'An unexpected error occurred while communicating with the server.';
+    }
+
+    return Promise.reject(error);
+  },
+);
