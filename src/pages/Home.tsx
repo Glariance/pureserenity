@@ -14,10 +14,9 @@ import {
   Flower2,
   ShoppingBag,
 } from 'lucide-react';
-// fetchHomePage and CmsFieldValue are provided by ../lib/storefront when connected to the CMS/API.
-import { fetchHomePage, CmsFieldValue } from '../lib/storefront';
-  const featuredProducts = products.filter((product) => product.featured).slice(0, 3);
-
+import { getHomePage } from '../api/home';
+import { CmsFieldValue } from '../lib/storefront';
+const featuredProducts = products.filter((product) => product.featured).slice(0, 3);
 
 type HeroSlideAction = { label: string; page?: string; href?: string };
 
@@ -32,6 +31,58 @@ interface HeroSlide {
   secondary?: HeroSlideAction;
 }
 
+const RAW_API_BASE = import.meta.env.VITE_API_BASE_URL?.trim();
+const BROWSER_ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+
+const { CMS_REQUEST_ORIGIN, CMS_MEDIA_BASE_URL } = (() => {
+  const fallback = new URL(BROWSER_ORIGIN);
+
+  if (RAW_API_BASE && RAW_API_BASE !== '') {
+    try {
+      const parsed = new URL(RAW_API_BASE, BROWSER_ORIGIN);
+      let cleanedPath = parsed.pathname.replace(/\/api\/?$/, '').replace(/\/$/, '');
+      cleanedPath = cleanedPath.replace(/\/public$/i, '');
+      const mediaBase =
+        cleanedPath.length > 0 ? `${parsed.origin}${cleanedPath}` : parsed.origin;
+
+      return {
+        CMS_REQUEST_ORIGIN: parsed.origin,
+        CMS_MEDIA_BASE_URL: mediaBase,
+      };
+    } catch {
+      // ignore and use fallback
+    }
+  }
+
+  return {
+    CMS_REQUEST_ORIGIN: fallback.origin,
+    CMS_MEDIA_BASE_URL: fallback.origin,
+  };
+})();
+
+const buildMediaUrlFromPath = (rawPath: string): string => {
+  const sanitized = rawPath
+    .replace(/^\/*/, '')
+    .replace(/^media\//i, '')
+    .replace(/^storage\//i, 'storage/');
+  const normalizedPath = sanitized.startsWith('storage/') ? sanitized : `storage/${sanitized}`;
+  const base = CMS_MEDIA_BASE_URL?.replace(/\/$/, '') ?? '';
+
+  if (!base) {
+    return `/${normalizedPath}`;
+  }
+
+  return `${base}/${normalizedPath}`.replace(/([^:]\/)\/+/g, '$1');
+};
+
+const buildHeroImageUrl = (cmsPath: string, fallbackAsset: string): string => {
+  if (!cmsPath) {
+    return fallbackAsset;
+  }
+
+  return buildMediaUrlFromPath(cmsPath);
+};
+
 const DEFAULT_HERO_SLIDES: HeroSlide[] = [
   {
     id: 'sunrise',
@@ -39,7 +90,7 @@ const DEFAULT_HERO_SLIDES: HeroSlide[] = [
     title: 'Ease into the day with mindful energy',
     description:
       'Layer aromatherapy, sunrise lamps, and guided journaling to greet each morning feeling grounded and bright.',
-    image: '/assets/images/banner1.jpg',
+    image: buildHeroImageUrl('cms_fields/1762277306_banner1.jpg', '/assets/images/banner1.jpg'),
     overlay: 'from-[#110a1f]/80 via-[#2f1d4a]/70 to-[#dc2e7c]/65',
     primary: { label: 'Shop Now', page: 'shop' },
     secondary: { label: 'Our Ritual Philosophy', page: 'about' }
@@ -50,7 +101,7 @@ const DEFAULT_HERO_SLIDES: HeroSlide[] = [
     title: 'Wind down with calming essentials',
     description:
       'Create a sanctuary after sunset with plush textures, herbal teas, and soft light curated for deep relaxation.',
-    image: '/assets/images/banner2.jpg',
+    image: buildHeroImageUrl('cms_fields/1762277431_banner2.jpg', '/assets/images/banner2.jpg'),
     overlay: 'from-[#140c27]/80 via-[#35224c]/70 to-[#f2a1c2]/60',
     primary: { label: 'Explore Evening Picks', page: 'shop' },
     secondary: { label: 'Meet the Collective', page: 'about' }
@@ -61,7 +112,7 @@ const DEFAULT_HERO_SLIDES: HeroSlide[] = [
     title: 'Share curated calm with someone special',
     description:
       'From small gestures to statement bundles, discover gifts that help your favorite people breathe a little easier.',
-    image: '/assets/images/banner3.jpg',
+    image: buildHeroImageUrl('cms_fields/1762277431_banner3.jpg', '/assets/images/banner3.jpg'),
     overlay: 'from-[#130d25]/80 via-[#2f1d4a]/70 to-[#f7c5d8]/60',
     primary: { label: 'Browse Gift Guides', page: 'shop' },
     secondary: { label: 'Connect With Us', page: 'contact' }
@@ -192,20 +243,6 @@ const DEFAULT_FEATURED_SECTION = {
   description: 'Explore a trio of customer-favorite essentials ready to elevate your daily calm.',
 };
 
-const RAW_API_BASE = import.meta.env.VITE_API_BASE_URL?.trim();
-const BROWSER_ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
-const CMS_API_ORIGIN = (() => {
-  if (RAW_API_BASE && RAW_API_BASE !== '') {
-    try {
-      return new URL(RAW_API_BASE, BROWSER_ORIGIN).origin;
-    } catch {
-      // ignore parsing issues and fall back
-    }
-  }
-
-  return BROWSER_ORIGIN;
-})();
-
 const stripHtmlTags = (value: string | null | undefined): string | null => {
   if (!value) {
     return null;
@@ -233,7 +270,13 @@ const stripHtmlTags = (value: string | null | undefined): string | null => {
   return sanitized === '' ? null : sanitized;
 };
 
-const resolveCmsMediaUrl = (field: CmsFieldValue | undefined): string | null => {
+const getCmsTextValue = (fields: Record<string, CmsFieldValue> | undefined, key: string): string | null =>
+  stripHtmlTags(fields?.[key]?.value);
+
+const getCmsMediaUrl = (fields: Record<string, CmsFieldValue> | undefined, key: string): string | null =>
+  resolveCmsMediaValue(fields?.[key]);
+
+const resolveCmsMediaValue = (field: CmsFieldValue | undefined): string | null => {
   if (!field) {
     return null;
   }
@@ -248,37 +291,28 @@ const resolveCmsMediaUrl = (field: CmsFieldValue | undefined): string | null => 
 
   if (/^https?:\/\//i.test(trimmed)) {
     try {
-      const parsed = new URL(trimmed, CMS_API_ORIGIN || undefined);
+      const parsed = new URL(trimmed, CMS_REQUEST_ORIGIN || undefined);
 
-      if (parsed.hostname === 'localhost' && !parsed.port && CMS_API_ORIGIN) {
-        const originUrl = new URL(CMS_API_ORIGIN);
-
+      if (!parsed.port && CMS_REQUEST_ORIGIN) {
+        const originUrl = new URL(CMS_REQUEST_ORIGIN);
         if (originUrl.port) {
           parsed.port = originUrl.port;
         }
       }
 
+      const normalizedPath = parsed.pathname
+        .replace(/\/media\//gi, '/storage/')
+        .replace(/^\/media\//i, '/storage/');
+      parsed.pathname = normalizedPath;
+
       return parsed.toString();
     } catch {
-      // fall through to relative handling
+      // fall back to path-based handling below
     }
   }
 
-  if (!CMS_API_ORIGIN) {
-    return trimmed;
-  }
-
-  const base = CMS_API_ORIGIN.replace(/\/$/, '');
-  const path = trimmed.replace(/^\//, '');
-
-  return `${base}/${path}`;
+  return buildMediaUrlFromPath(trimmed);
 };
-
-const getCmsTextValue = (fields: Record<string, CmsFieldValue> | undefined, key: string): string | null =>
-  stripHtmlTags(fields?.[key]?.value);
-
-const getCmsMediaUrl = (fields: Record<string, CmsFieldValue> | undefined, key: string): string | null =>
-  resolveCmsMediaUrl(fields?.[key]);
 
 const parseCmsList = (value?: string | null): string[] | null => {
   if (!value) {
@@ -318,7 +352,7 @@ export default function Home({ onNavigate }: HomeProps) {
   const [journeySection, setJourneySection] = useState(DEFAULT_JOURNEY_SECTION);
   const [discoverSection, setDiscoverSection] = useState(DEFAULT_DISCOVER_SECTION);
   const [peopleSayingSection, setPeopleSayingSection] = useState(DEFAULT_PEOPLE_SAYING_SECTION);
-  const [, setFeaturedSection] = useState(DEFAULT_FEATURED_SECTION);
+  const [featuredSection, setFeaturedSection] = useState(DEFAULT_FEATURED_SECTION);
 
   useEffect(() => {
     if (slideCount === 0) {
@@ -409,7 +443,7 @@ export default function Home({ onNavigate }: HomeProps) {
 
     const loadHomeContent = async () => {
       try {
-        const response = await fetchHomePage();
+        const response = await getHomePage();
 
         if (!isMounted) {
           return;
@@ -1003,12 +1037,14 @@ export default function Home({ onNavigate }: HomeProps) {
            <section className="py-20 bg-gradient-to-b from-[#fdf2fa] to-[#f8daed]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <p className="text-sm tracking-[0.3em] uppercase text-purple-500 mb-3">Featured Products</p>
+            <p className="text-sm tracking-[0.3em] uppercase text-purple-500 mb-3">
+              {featuredSection.title}
+            </p>
             <h2 className="text-4xl font-bold text-[#DC2E7C] mb-4">
-              Fresh ideas to inspire your rituals
+              {featuredSection.heading}
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Explore a trio of customer-favorite essentials ready to elevate your daily calm.
+              {featuredSection.description}
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

@@ -99,11 +99,3 @@ export async function submitContact(payload: ContactPayload): Promise<ContactRes
   const response = await apiClient.post<ContactResponse>('/contact', payload);
   return response.data;
 }
-
-export async function fetchHomePage(slug = 'home'): Promise<HomePageResponse> {
-  const response = await apiClient.get<HomePageResponse>('/home', {
-    params: { slug },
-  });
-
-  return response.data;
-}
