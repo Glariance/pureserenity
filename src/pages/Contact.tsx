@@ -1,16 +1,8 @@
-import { useState } from 'react';
-import {
-  Mail,
-  MessageCircle,
-  Send,
-  CheckCircle,
-  PhoneCall,
-  Clock,
-  MapPin,
-  Camera,
-  ArrowRight
-} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Mail, MessageCircle, Send, PhoneCall, Clock, MapPin, Camera, ArrowRight } from 'lucide-react';
 import { submitContact } from '../lib/storefront';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
 
 interface ContactSubmission {
   name: string;
@@ -19,58 +11,119 @@ interface ContactSubmission {
   message: string;
 }
 
+interface ContactField {
+  name: keyof ContactSubmission;
+  label: string;
+  placeholder: string;
+  type: 'text' | 'email';
+  optional?: boolean;
+}
+
+const CONTACT_FIELDS: ContactField[] = [
+  {
+    name: 'name',
+    label: 'Your Name',
+    placeholder: 'John Doe',
+    type: 'text'
+  },
+  {
+    name: 'email',
+    label: 'Email Address',
+    placeholder: 'john@example.com',
+    type: 'email'
+  },
+  {
+    name: 'subject',
+    label: 'Subject',
+    placeholder: 'How can we support you?',
+    type: 'text',
+    optional: true
+  }
+];
+
+const createInitialFormState = (): ContactSubmission => ({
+  name: '',
+  email: '',
+  subject: '',
+  message: ''
+});
+
 export default function Contact() {
-  const [formData, setFormData] = useState<ContactSubmission>({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
-  });
+  const [formData, setFormData] = useState<ContactSubmission>(createInitialFormState);
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const toast = useMemo(
+    () =>
+      Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 4000,
+        timerProgressBar: true,
+        customClass: {
+          popup: 'shadow-2xl rounded-2xl'
+        }
+      }),
+    []
+  );
+
+  const isFormValid =
+    formData.name.trim().length > 1 &&
+    formData.email.trim().length > 3 &&
+    formData.message.trim().length > 10;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMessage(null);
+    setFeedback(null);
 
     try {
       const response = await submitContact(formData);
-      setSubmitted(true);
-      setSuccessMessage(response.message);
-      setFormData({ name: '', email: '', subject: '', message: '' });
+      const message = response.message ?? "Thank you for reaching out. We'll get back to you soon.";
+      setFormData(createInitialFormState());
+      setFeedback({ type: 'success', message });
+      toast.fire({
+        icon: 'success',
+        title: message
+      });
     } catch (err) {
-      if (err && typeof err === 'object' && 'response' in err) {
-        const response = (err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }).response;
-        const validationMessages = response?.data?.errors
-          ? Object.values(response.data.errors).flat()
-          : [];
-        const fallbackMessage =
-          response?.data?.message ?? 'Unable to send your message right now. Please try again.';
-        setErrorMessage(validationMessages.length > 0 ? validationMessages.join(' ') : fallbackMessage);
-      } else {
-        const fallback =
-          err instanceof Error
-            ? err.message
-            : 'Unable to send your message right now. Please try again.';
-        setErrorMessage(fallback);
-      }
+      const parseErrorMessage = (): string => {
+        if (err && typeof err === 'object' && 'response' in err) {
+          const response = (err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } })
+            .response;
+          const validationMessages = response?.data?.errors ? Object.values(response.data.errors).flat() : [];
+          return (
+            validationMessages.join(' ') ||
+            response?.data?.message ||
+            'Unable to send your message right now. Please try again.'
+          );
+        }
+
+        return err instanceof Error
+          ? err.message
+          : 'Unable to send your message right now. Please try again.';
+      };
+
+      const message = parseErrorMessage();
+      setFeedback({ type: 'error', message });
+      toast.fire({
+        icon: 'error',
+        title: message
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    if (errorMessage) {
-      setErrorMessage(null);
+    if (feedback?.type === 'error') {
+      setFeedback(null);
     }
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value
-    });
+    }));
   };
 
   const supportHighlights = [
@@ -94,15 +147,18 @@ export default function Contact() {
   const faqs = [
     {
       question: 'How soon will I hear back after submitting the form?',
-      answer: 'We respond within two business days. For urgent requests, text us using the concierge line and note your order number.'
+      answer:
+        'We respond within two business days. For urgent requests, text us using the concierge line and note your order number.'
     },
     {
       question: 'Do you offer custom curated boxes?',
-      answer: 'Yes! Share a few details about the recipient or occasion and our team will send 3 tailored bundles to choose from.'
+      answer:
+        'Yes! Share a few details about the recipient or occasion and our team will send 3 tailored bundles to choose from.'
     },
     {
       question: 'Can I pitch my wellness brand for collaboration?',
-      answer: 'Absolutely. Tell us about your product story and sustainability practices - our curation team reviews submissions weekly.'
+      answer:
+        'Absolutely. Tell us about your product story and sustainability practices - our curation team reviews submissions weekly.'
     }
   ];
 
@@ -120,6 +176,21 @@ export default function Contact() {
       caption: 'Community journaling circle every Thursday.'
     }
   ];
+
+const renderFieldLabel = (field: ContactField) => (
+  <label htmlFor={field.name} className="block text-sm font-medium text-gray-700 mb-2">
+    {field.label} {field.optional ? <span className="text-gray-400">(optional)</span> : null}
+  </label>
+);
+
+  const scrollToForm = () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const formElement = document.getElementById('contact-form');
+    formElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#fdf2fa] via-[#f8daed] to-[#d5c0fa]">
@@ -152,115 +223,83 @@ export default function Contact() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <div className="bg-white rounded-3xl shadow-xl p-8 animate-fade-in-up animation-delay-200">
-              {submitted ? (
-                <div className="text-center py-12">
-                  <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
-                  <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-                    Message Sent!
-                  </h3>
-                  <p className="text-gray-600 mb-8">
-                    {successMessage ?? "Thank you for reaching out. We'll get back to you soon."}
-                  </p>
-                  <button
-                    onClick={() => {
-                      setSubmitted(false);
-                      setSuccessMessage(null);
-                      setErrorMessage(null);
-                    }}
-                    className="px-6 py-3 bg-purple-600 text-white rounded-full font-semibold hover:bg-purple-700 transition-all duration-300"
+              <form id="contact-form" onSubmit={handleSubmit} className="space-y-6">
+                {feedback ? (
+                  <div
+                    className={`rounded-xl px-4 py-3 text-sm border ${
+                      feedback.type === 'success'
+                        ? 'bg-green-50 border-green-200 text-green-700'
+                        : 'bg-red-50 border-red-200 text-red-700'
+                    }`}
+                    role="status"
+                    aria-live="polite"
                   >
-                    Send Another Message
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {errorMessage && (
-                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm">
-                      {errorMessage}
+                    <div className="flex items-center justify-between gap-4">
+                      <span>{feedback.message}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFeedback(null)}
+                        className="text-xs uppercase tracking-widest text-current/70 hover:text-current font-semibold"
+                      >
+                        Dismiss
+                      </button>
                     </div>
+                  </div>
+                ) : null}
+
+                {CONTACT_FIELDS.map((field) => (
+                  <div key={field.name}>
+                    {renderFieldLabel(field)}
+                    <input
+                      type={field.type}
+                      id={field.name}
+                      name={field.name}
+                      value={formData[field.name]}
+                      onChange={handleChange}
+                      required={!field.optional}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all duration-300 outline-none"
+                      placeholder={field.placeholder}
+                    />
+                  </div>
+                ))}
+
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                    Message
+                  </label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    value={formData.message}
+                    onChange={handleChange}
+                    required
+                    rows={6}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all duration-300 outline-none resize-none"
+                    placeholder="Tell us how we can help you..."
+                  />
+                  <p className="text-xs text-gray-400 mt-2">
+                    Share as much detail as possible so we can route your request to the right guide quickly.
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !isFormValid}
+                  className="w-full px-6 py-4 bg-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl hover:bg-purple-700 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      Send Message
+                      <Send className="h-5 w-5" />
+                    </>
                   )}
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                      Your Name
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all duration-300 outline-none"
-                      placeholder="John Doe"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all duration-300 outline-none"
-                      placeholder="john@example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-                      Subject <span className="text-gray-400">(optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="subject"
-                      name="subject"
-                      value={formData.subject}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all duration-300 outline-none"
-                      placeholder="How can we support you?"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                      Message
-                    </label>
-                    <textarea
-                      id="message"
-                      name="message"
-                      value={formData.message}
-                      onChange={handleChange}
-                      required
-                      rows={6}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-600 focus:border-transparent transition-all duration-300 outline-none resize-none"
-                      placeholder="Tell us how we can help you..."
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full px-6 py-4 bg-purple-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl hover:bg-purple-700 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        Send Message
-                        <Send className="h-5 w-5" />
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
+                </button>
+              </form>
             </div>
           </div>
 
@@ -329,7 +368,8 @@ export default function Contact() {
                 <ArrowRight className="h-4 w-4" />
               </a>
               <button
-                onClick={() => setSubmitted(false)}
+                type="button"
+                onClick={scrollToForm}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/20 text-white rounded-full font-semibold border border-white/30 hover:bg-white/30 transition-all duration-300"
               >
                 Send Us a Note

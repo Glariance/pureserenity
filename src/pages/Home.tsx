@@ -16,6 +16,12 @@ import {
 } from 'lucide-react';
 import { getHomePage } from '../api/home';
 import { CmsFieldValue } from '../lib/storefront';
+import {
+  PLACEHOLDER_IMAGE,
+  PLACEHOLDER_TEXT_LONG,
+  PLACEHOLDER_TEXT_SHORT,
+  createPlaceholderList
+} from '../lib/placeholders';
 const featuredProducts = products.filter((product) => product.featured).slice(0, 3);
 
 type HeroSlideAction = { label: string; page?: string; href?: string };
@@ -243,6 +249,89 @@ const DEFAULT_FEATURED_SECTION = {
   description: 'Explore a trio of customer-favorite essentials ready to elevate your daily calm.',
 };
 
+const PLACEHOLDER_HERO_ACTION: HeroSlideAction = { label: PLACEHOLDER_TEXT_SHORT, href: '#' };
+
+const PLACEHOLDER_HERO_SLIDES: HeroSlide[] = HERO_OVERLAY_PRESETS.map((overlay, index) => ({
+  id: `placeholder-hero-${index}`,
+  eyeline: PLACEHOLDER_TEXT_SHORT,
+  title: PLACEHOLDER_TEXT_SHORT,
+  description: PLACEHOLDER_TEXT_LONG,
+  image: PLACEHOLDER_IMAGE,
+  overlay,
+  primary: PLACEHOLDER_HERO_ACTION,
+  secondary: PLACEHOLDER_HERO_ACTION,
+}));
+
+const PLACEHOLDER_ABOUT_SECTION = {
+  title: PLACEHOLDER_TEXT_SHORT,
+  heading: PLACEHOLDER_TEXT_SHORT,
+  description: PLACEHOLDER_TEXT_LONG,
+  image: PLACEHOLDER_IMAGE,
+};
+
+const PLACEHOLDER_WHY_CHOOSE = {
+  heading: PLACEHOLDER_TEXT_SHORT,
+  description: PLACEHOLDER_TEXT_LONG,
+  features: Array.from({ length: DEFAULT_WHY_CHOOSE.features.length }, () => ({
+    title: PLACEHOLDER_TEXT_SHORT,
+    description: PLACEHOLDER_TEXT_LONG,
+  })),
+  image1: {
+    src: PLACEHOLDER_IMAGE,
+    heading: PLACEHOLDER_TEXT_SHORT,
+    description: PLACEHOLDER_TEXT_LONG,
+  },
+  image2: {
+    src: PLACEHOLDER_IMAGE,
+    heading: PLACEHOLDER_TEXT_SHORT,
+    description: PLACEHOLDER_TEXT_LONG,
+  },
+};
+
+const PLACEHOLDER_SIGNATURE_COLLECTIONS = {
+  title: PLACEHOLDER_TEXT_SHORT,
+  heading: PLACEHOLDER_TEXT_SHORT,
+  description: PLACEHOLDER_TEXT_LONG,
+  items: DEFAULT_SIGNATURE_COLLECTIONS.items.map((item, index) => ({
+    ...item,
+    title: `${PLACEHOLDER_TEXT_SHORT} ${index + 1}`,
+    description: PLACEHOLDER_TEXT_LONG,
+    image: PLACEHOLDER_IMAGE,
+  })),
+};
+
+const PLACEHOLDER_DISCOVER_SECTION = {
+  title: PLACEHOLDER_TEXT_SHORT,
+  heading: PLACEHOLDER_TEXT_SHORT,
+  description: PLACEHOLDER_TEXT_LONG,
+  cards: DEFAULT_DISCOVER_SECTION.cards.map((card, index) => ({
+    title: `${PLACEHOLDER_TEXT_SHORT} ${index + 1}`,
+    items: createPlaceholderList(card.items.length || 3),
+    palette: card.palette,
+  })),
+};
+
+const PLACEHOLDER_JOURNEY_SECTION = {
+  heading: PLACEHOLDER_TEXT_SHORT,
+  description: PLACEHOLDER_TEXT_LONG,
+};
+
+const PLACEHOLDER_PEOPLE_SAYING_SECTION = {
+  title: PLACEHOLDER_TEXT_SHORT,
+  heading: PLACEHOLDER_TEXT_SHORT,
+  description: PLACEHOLDER_TEXT_LONG,
+  images: DEFAULT_PEOPLE_SAYING_SECTION.images.map(() => ({
+    src: PLACEHOLDER_IMAGE,
+    alt: 'Pure Serenity logo placeholder',
+  })),
+};
+
+const PLACEHOLDER_FEATURED_SECTION = {
+  title: PLACEHOLDER_TEXT_SHORT,
+  heading: PLACEHOLDER_TEXT_SHORT,
+  description: PLACEHOLDER_TEXT_LONG,
+};
+
 const stripHtmlTags = (value: string | null | undefined): string | null => {
   if (!value) {
     return null;
@@ -343,9 +432,6 @@ interface HomeProps {
 export default function Home({ onNavigate }: HomeProps) {
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>(DEFAULT_HERO_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const slideCount = heroSlides.length;
-  const safeSlideCount = Math.max(slideCount, 1);
-  const activeSlide = heroSlides[currentSlide % safeSlideCount] ?? DEFAULT_HERO_SLIDES[0];
   const [aboutSection, setAboutSection] = useState(DEFAULT_ABOUT_SECTION);
   const [whyChooseSection, setWhyChooseSection] = useState(DEFAULT_WHY_CHOOSE);
   const [signatureCollections, setSignatureCollections] = useState(DEFAULT_SIGNATURE_COLLECTIONS);
@@ -353,6 +439,20 @@ export default function Home({ onNavigate }: HomeProps) {
   const [discoverSection, setDiscoverSection] = useState(DEFAULT_DISCOVER_SECTION);
   const [peopleSayingSection, setPeopleSayingSection] = useState(DEFAULT_PEOPLE_SAYING_SECTION);
   const [featuredSection, setFeaturedSection] = useState(DEFAULT_FEATURED_SECTION);
+  const [isHomeContentReady, setIsHomeContentReady] = useState(false);
+
+  const heroSlidesToRender = isHomeContentReady ? heroSlides : PLACEHOLDER_HERO_SLIDES;
+  const slideCount = heroSlidesToRender.length;
+  const safeSlideCount = Math.max(slideCount, 1);
+  const activeSlide =
+    heroSlidesToRender[currentSlide % safeSlideCount] ?? PLACEHOLDER_HERO_SLIDES[0];
+  const aboutContent = isHomeContentReady ? aboutSection : PLACEHOLDER_ABOUT_SECTION;
+  const whyChooseContent = isHomeContentReady ? whyChooseSection : PLACEHOLDER_WHY_CHOOSE;
+  const signatureContent = isHomeContentReady ? signatureCollections : PLACEHOLDER_SIGNATURE_COLLECTIONS;
+  const journeyContent = isHomeContentReady ? journeySection : PLACEHOLDER_JOURNEY_SECTION;
+  const discoverContent = isHomeContentReady ? discoverSection : PLACEHOLDER_DISCOVER_SECTION;
+  const peopleContent = isHomeContentReady ? peopleSayingSection : PLACEHOLDER_PEOPLE_SAYING_SECTION;
+  const featuredContent = isHomeContentReady ? featuredSection : PLACEHOLDER_FEATURED_SECTION;
 
   useEffect(() => {
     if (slideCount === 0) {
@@ -637,6 +737,10 @@ export default function Home({ onNavigate }: HomeProps) {
               getCmsTextValue(featuredFields, 'Description') ?? DEFAULT_FEATURED_SECTION.description,
           });
         }
+
+        if (isMounted) {
+          setIsHomeContentReady(true);
+        }
       } catch (error) {
         console.error('Failed to load home page content', error);
       }
@@ -666,13 +770,13 @@ export default function Home({ onNavigate }: HomeProps) {
     }
   ];
 
-  const discoverCards = discoverSection.cards.map((card, index) => ({
+  const discoverCards = discoverContent.cards.map((card, index) => ({
     ...card,
     icon: DISCOVER_ICON_COMPONENTS[index % DISCOVER_ICON_COMPONENTS.length],
   }));
 
   const featureIcons = [Sparkles, Heart, Leaf];
-  const featureCards = whyChooseSection.features.map((feature, index) => ({
+  const featureCards = whyChooseContent.features.map((feature, index) => ({
     ...feature,
     icon: featureIcons[index % featureIcons.length]
   }));
@@ -681,7 +785,7 @@ export default function Home({ onNavigate }: HomeProps) {
     <div className="min-h-screen">
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
-          {heroSlides.map((slide, index) => (
+          {heroSlidesToRender.map((slide, index) => (
             <img
               key={slide.id}
               src={slide.image}
@@ -741,7 +845,7 @@ export default function Home({ onNavigate }: HomeProps) {
 
         <div className="absolute inset-x-0 bottom-10 flex flex-col sm:flex-row items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
-            {heroSlides.map((slide, index) => (
+            {heroSlidesToRender.map((slide, index) => (
             <button
                 key={`${slide.id}-dot`}
                 type="button"
@@ -780,19 +884,19 @@ export default function Home({ onNavigate }: HomeProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6 text-left animate-fade-in-up">
               <p className="text-sm tracking-[0.3em] uppercase text-purple-500">
-                {aboutSection.title}
+                {aboutContent.title}
               </p>
               <h2 className="text-4xl font-bold text-[#DC2E7C]">
-                {aboutSection.heading}
+                {aboutContent.heading}
               </h2>
               <p className="text-lg text-gray-600 leading-relaxed">
-                {aboutSection.description}
+                {aboutContent.description}
               </p>
             </div>
             <div className="relative h-96 rounded-3xl overflow-hidden shadow-xl animate-fade-in-up">
               <img
-                src={aboutSection.image}
-                alt={aboutSection.title}
+                src={aboutContent.image}
+                alt={aboutContent.title}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-br from-pink-100/20 via-transparent to-purple-200/20" />
@@ -806,10 +910,10 @@ export default function Home({ onNavigate }: HomeProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 animate-fade-in-up">
             <h2 className="text-4xl font-bold text-[#DC2E7C] mb-4">
-              {whyChooseSection.heading}
+              {whyChooseContent.heading}
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              {whyChooseSection.description}
+              {whyChooseContent.description}
             </p>
           </div>
 
@@ -836,27 +940,27 @@ export default function Home({ onNavigate }: HomeProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="relative h-96 rounded-3xl overflow-hidden shadow-xl group">
               <img
-                src={whyChooseSection.image1.src}
-                alt={whyChooseSection.image1.heading}
+                src={whyChooseContent.image1.src}
+                alt={whyChooseContent.image1.heading}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-purple-900/70 to-transparent flex items-end p-8">
                 <div className="text-white">
-                  <h3 className="text-2xl font-bold mb-2">{whyChooseSection.image1.heading}</h3>
-                  <p className="text-purple-100">{whyChooseSection.image1.description}</p>
+                  <h3 className="text-2xl font-bold mb-2">{whyChooseContent.image1.heading}</h3>
+                  <p className="text-purple-100">{whyChooseContent.image1.description}</p>
                 </div>
               </div>
             </div>
             <div className="relative h-96 rounded-3xl overflow-hidden shadow-xl group">
               <img
-                src={whyChooseSection.image2.src}
-                alt={whyChooseSection.image2.heading}
+                src={whyChooseContent.image2.src}
+                alt={whyChooseContent.image2.heading}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-pink-900/70 to-transparent flex items-end p-8">
                 <div className="text-white">
-                  <h3 className="text-2xl font-bold mb-2">{whyChooseSection.image2.heading}</h3>
-                  <p className="text-pink-100">{whyChooseSection.image2.description}</p>
+                  <h3 className="text-2xl font-bold mb-2">{whyChooseContent.image2.heading}</h3>
+                  <p className="text-pink-100">{whyChooseContent.image2.description}</p>
                 </div>
               </div>
             </div>
@@ -869,13 +973,13 @@ export default function Home({ onNavigate }: HomeProps) {
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-10 mb-12">
             <div className="max-w-2xl">
               <p className="text-sm tracking-[0.3em] uppercase text-purple-500 mb-3">
-                {signatureCollections.title}
+                {signatureContent.title}
               </p>
               <h2 className="text-4xl font-bold text-[#DC2E7C] mb-4">
-                {signatureCollections.heading}
+                {signatureContent.heading}
               </h2>
               <p className="text-lg text-gray-600">
-                {signatureCollections.description}
+                {signatureContent.description}
               </p>
             </div>
             <a
@@ -891,7 +995,7 @@ export default function Home({ onNavigate }: HomeProps) {
             </a>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {signatureCollections.items.map((collection, index) => (
+            {signatureContent.items.map((collection, index) => (
               <div
                 key={collection.title}
                 className="relative overflow-hidden rounded-3xl shadow-xl group animate-fade-in-up"
@@ -925,10 +1029,10 @@ export default function Home({ onNavigate }: HomeProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <Star className="h-12 w-12 text-[#DC2E7C] mx-auto mb-6 animate-pulse" />
           <h2 className="text-4xl font-bold text-gray-900 mb-6">
-            {journeySection.heading}
+            {journeyContent.heading}
           </h2>
           <p className="text-xl mb-8 text-gray-600 max-w-2xl mx-auto">
-            {journeySection.description}
+            {journeyContent.description}
           </p>
           <a
             href="/shop"
@@ -947,13 +1051,13 @@ export default function Home({ onNavigate }: HomeProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-sm tracking-[0.3em] uppercase text-purple-500 mb-3">
-              {discoverSection.title}
+              {discoverContent.title}
             </p>
             <h2 className="text-4xl font-bold text-[#DC2E7C] mb-4">
-              {discoverSection.heading}
+              {discoverContent.heading}
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              {discoverSection.description}
+              {discoverContent.description}
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -989,13 +1093,13 @@ export default function Home({ onNavigate }: HomeProps) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
               <p className="text-sm tracking-[0.3em] uppercase text-purple-500">
-                {peopleSayingSection.title}
+                {peopleContent.title}
               </p>
               <h2 className="text-4xl font-bold text-[#DC2E7C]">
-                {peopleSayingSection.heading}
+                {peopleContent.heading}
               </h2>
               <p className="text-lg text-gray-600">
-                {peopleSayingSection.description}
+                {peopleContent.description}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {testimonials.map((testimonial) => (
@@ -1015,12 +1119,12 @@ export default function Home({ onNavigate }: HomeProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="row-span-2 rounded-3xl overflow-hidden shadow-xl">
                 <img
-                  src={peopleSayingSection.images[0]?.src}
-                  alt={peopleSayingSection.images[0]?.alt}
+                  src={peopleContent.images[0]?.src}
+                  alt={peopleContent.images[0]?.alt}
                   className="w-full h-full object-cover"
                 />
               </div>
-              {peopleSayingSection.images.slice(1).map((image, index) => (
+              {peopleContent.images.slice(1).map((image, index) => (
                 <div key={`people-image-${index + 2}`} className="rounded-3xl overflow-hidden shadow-xl">
                   <img
                     src={image.src}
@@ -1034,17 +1138,17 @@ export default function Home({ onNavigate }: HomeProps) {
         </div>
       </section>
 
-           <section className="py-20 bg-gradient-to-b from-[#fdf2fa] to-[#f8daed]">
+      <section className="py-20 bg-gradient-to-b from-[#fdf2fa] to-[#f8daed]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-sm tracking-[0.3em] uppercase text-purple-500 mb-3">
-              {featuredSection.title}
+              {featuredContent.title}
             </p>
             <h2 className="text-4xl font-bold text-[#DC2E7C] mb-4">
-              {featuredSection.heading}
+              {featuredContent.heading}
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              {featuredSection.description}
+              {featuredContent.description}
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

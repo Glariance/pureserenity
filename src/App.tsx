@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import StartupLoader from './components/StartupLoader';
 import Home from './pages/Home';
 import About from './pages/About';
 import Shop from './pages/Shop';
@@ -36,6 +37,7 @@ const getInitialPage = () => {
 
 function App() {
   const [currentPage, setCurrentPage] = useState<string>(getInitialPage);
+  const [isStartupLoading, setIsStartupLoading] = useState(true);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -55,6 +57,11 @@ function App() {
       window.localStorage.setItem('pure-serenity-current-page', currentPage);
     }
   }, [currentPage]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIsStartupLoading(false), 1200);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -103,6 +110,7 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <StartupLoader isVisible={isStartupLoading} />
       <Header currentPage={currentPage} onNavigate={handleNavigate} />
       <main className="flex-grow">
         {renderPage()}
