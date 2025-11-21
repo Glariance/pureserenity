@@ -67,29 +67,6 @@ export default function Shop() {
     }
   ];
 
-  const lookbook = [
-    {
-      title: 'Desk Reset',
-      description: 'Diffusers, soft lighting, and posture-friendly seating for mindful workdays.',
-      image: 'assets/images/lookbook1.jpg'
-    },
-    {
-      title: 'Soothing Glow',
-      description: 'Himalayan salt lamps and candle warmers for gentle, cozy ambiance.',
-      image: 'assets/images/lookbook2.jpg'
-    },
-    {
-      title: 'Weekend Retreat',
-      description: 'Packable yoga mats, travel teas, and journals for unplugged getaways.',
-      image: 'assets/images/lookbook3.jpg'
-    },
-    {
-      title: 'Bath Sanctuary',
-      description: 'Mineral soaks, bath caddies, and waterproof speakers for elevated self-care.',
-      image: 'assets/images/lookbook4.jpg'
-    }
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#fdf2fa] via-[#f8daed] to-[#d5c0fa]">
       <section className="relative h-[50vh] min-h-[360px] flex items-center justify-center overflow-hidden">
@@ -264,39 +241,6 @@ export default function Shop() {
           </div>
         </section>
 
-        <section className="mt-20">
-          <div className="text-center mb-12">
-            <p className="text-sm tracking-[0.3em] uppercase text-purple-500 mb-3">Lookbook</p>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Style your space with sensory cues
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Borrow ideas from our community studio to layer textures, lighting, and gentle sound into your sanctuary.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {lookbook.map((scene) => (
-              <div key={scene.title} className="group relative overflow-hidden rounded-3xl shadow-xl">
-                <img
-                  src={scene.image}
-                  alt={scene.title}
-                  className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                  <h3 className="text-2xl font-semibold">{scene.title}</h3>
-                  <p className="text-sm text-purple-100 mt-2 leading-relaxed">{scene.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div className="mt-16 text-center">
-          <p className="text-sm text-gray-600">
-            As an Amazon Associate, we earn from qualifying purchases.
-          </p>
-        </div>
       </div>
     </div>
   );

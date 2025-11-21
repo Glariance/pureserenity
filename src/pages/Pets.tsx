@@ -69,28 +69,28 @@ export default function Pets() {
     },
   ];
 
-  const lookbook = [
-    {
-      title: 'Rainy Day Reset',
-      description: 'Set out a snuffle mat near a diffuser to channel energy on stormy afternoons.',
-      image: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=900&q=80',
-    },
-    {
-      title: 'Sun-Dappled Nap Spot',
-      description: 'Layer a memory foam bed with a weighted wrap for grounded, daytime snoozes.',
-      image: 'https://images.unsplash.com/photo-1504595403659-9088ce801e29?auto=format&fit=crop&w=900&q=80',
-    },
-    {
-      title: 'Travel-Ready Corner',
-      description: 'Keep carriers, harnesses, and calming sprays ready to grab-and-go near the door.',
-      image: 'assets/images/pets-travel-ready-corner.jpg',
-    },
-    {
-      title: 'Playful Evening Ritual',
-      description: 'Wrap fetch sessions with a calming chew and gentle brushing for bonding time.',
-      image: 'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?auto=format&fit=crop&w=900&q=80',
-    },
-  ];
+  // const lookbook = [
+  //   {
+  //     title: 'Rainy Day Reset',
+  //     description: 'Set out a snuffle mat near a diffuser to channel energy on stormy afternoons.',
+  //     image: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=900&q=80',
+  //   },
+  //   {
+  //     title: 'Sun-Dappled Nap Spot',
+  //     description: 'Layer a memory foam bed with a weighted wrap for grounded, daytime snoozes.',
+  //     image: 'https://images.unsplash.com/photo-1504595403659-9088ce801e29?auto=format&fit=crop&w=900&q=80',
+  //   },
+  //   {
+  //     title: 'Travel-Ready Corner',
+  //     description: 'Keep carriers, harnesses, and calming sprays ready to grab-and-go near the door.',
+  //     image: 'assets/images/pets-travel-ready-corner.jpg',
+  //   },
+  //   {
+  //     title: 'Playful Evening Ritual',
+  //     description: 'Wrap fetch sessions with a calming chew and gentle brushing for bonding time.',
+  //     image: 'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?auto=format&fit=crop&w=900&q=80',
+  //   },
+  // ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#fdf2fa] via-[#f8daed] to-[#d5c0fa]">
@@ -270,7 +270,7 @@ export default function Pets() {
           </div>
         </section>
 
-        <section className="mt-20">
+        {/* <section className="mt-20">
           <div className="text-center mb-12">
             <p className="text-sm tracking-[0.3em] uppercase text-purple-500 mb-3">Lookbook</p>
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Design a serene pet sanctuary</h2>
@@ -298,7 +298,7 @@ export default function Pets() {
 
         <div className="mt-16 text-center">
           <p className="text-sm text-gray-600">As an Amazon Associate, we earn from qualifying purchases.</p>
-        </div>
+        </div> */}
       </section>
     </div>
   );
