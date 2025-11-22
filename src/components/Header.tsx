@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Menu, X, Search } from 'lucide-react';
+import { apiClient } from '../lib/apiClient';
 
 interface HeaderProps {
   currentPage: string;
@@ -9,6 +10,8 @@ interface HeaderProps {
 export default function Header({ currentPage, onNavigate }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [productResults, setProductResults] = useState<Array<{ id: number; name: string; affiliate_link?: string | null; amazon_link?: string | null }>>([]);
+  const [searching, setSearching] = useState(false);
 
   const navItems = useMemo(
     () => [
@@ -33,6 +36,35 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
   };
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const term = query.trim();
+      if (term.length < 2) {
+        setProductResults([]);
+        return;
+      }
+      setSearching(true);
+      try {
+        const { data } = await apiClient.get('/products', { params: { search: term, include_inactive: true } });
+        const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+        const mapped = list.slice(0, 5).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          affiliate_link: p.affiliate_link,
+          amazon_link: p.amazon_link,
+        }));
+        setProductResults(mapped);
+      } catch (err) {
+        setProductResults([]);
+      } finally {
+        setSearching(false);
+      }
+    };
+
+    const handle = setTimeout(fetchProducts, 200);
+    return () => clearTimeout(handle);
+  }, [query]);
 
   return (
     <header className="sticky top-0 left-0 right-0 z-50 bg-[#F8DAED]/95 backdrop-blur-sm shadow-sm border-b border-pink-200/60">
@@ -77,9 +109,37 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
                 type="search"
                 value={query}
                 onChange={handleSearchChange}
-                placeholder="Search navigation..."
+                placeholder="Search products..."
                 className="pl-11 pr-4 py-2 rounded-full bg-white/80 border border-pink-200 focus:outline-none focus:ring-2 focus:ring-[#DC2E7C] focus:border-transparent transition-all duration-200 text-sm text-[#DC2E7C] placeholder:text-[#b26aa0]"
               />
+              {query.trim() && (
+                <div className="absolute mt-2 w-72 bg-white shadow-lg rounded-2xl border border-pink-100 overflow-hidden">
+                  {searching ? (
+                    <div className="px-4 py-3 text-sm text-gray-500">Searching...</div>
+                  ) : productResults.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-gray-500">No products found</div>
+                  ) : (
+                    <ul className="max-h-64 overflow-auto">
+                      {productResults.map((product) => {
+                        const link = product.affiliate_link || product.amazon_link || '#';
+                        return (
+                          <li key={product.id}>
+                            <a
+                              href={link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-between px-4 py-3 text-sm text-gray-800 hover:bg-pink-50 transition-colors"
+                            >
+                              <span>{product.name}</span>
+                              <span className="text-[#DC2E7C] text-xs">View</span>
+                            </a>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -123,7 +183,6 @@ export default function Header({ currentPage, onNavigate }: HeaderProps) {
     </header>
   );
 }
-
 
 
 
