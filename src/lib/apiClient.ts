@@ -2,6 +2,8 @@ import axios from 'axios';
 import showToast from './toast';
 
 const rawBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+
 // Strip a trailing `/public` if present (often added when copying the Laravel app URL),
 // then remove duplicate trailing slashes.
 const cleanedBaseUrl =
@@ -13,9 +15,13 @@ const normalizedBaseUrl =
     ? cleanedBaseUrl.replace(/\/+$/, '')
     : '';
 
+// Prefer provided env; otherwise fall back to same-origin /api to avoid cert/CORS issues with other hosts.
+const resolvedBaseUrl =
+  normalizedBaseUrl ||
+  (browserOrigin ? `${browserOrigin.replace(/\/+$/, '')}/api` : 'https://www.pureserenityshop.com/api');
+
 export const apiClient = axios.create({
-  // Default to production API if env is not set
-  baseURL: normalizedBaseUrl || 'http://admin.pureserenityshop.com/api',
+  baseURL: resolvedBaseUrl,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
